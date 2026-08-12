@@ -162,6 +162,8 @@ services:
       RELAY_URL: ${RELAY_URL:?set RELAY_URL}
       BOOTSTRAP_OWNER_PUBKEY: ${RELAY_OWNER_PUBKEY:?set RELAY_OWNER_PUBKEY}
       BOOTSTRAP_AGENT_PUBKEY: ${BOOTSTRAP_AGENT_PUBKEY:-}
+      BOOTSTRAP_BARD_PUBKEY: ${BOOTSTRAP_BARD_PUBKEY:-}
+      BOOTSTRAP_XENA_PUBKEY: ${BOOTSTRAP_XENA_PUBKEY:-}
     entrypoint: ["/bin/bash", "-ec"]
     command:
       - |
@@ -178,6 +180,14 @@ services:
         if [ -n "$${BOOTSTRAP_AGENT_PUBKEY}" ]; then
           echo "Adding agent member: $$BOOTSTRAP_AGENT_PUBKEY"
           buzz-admin add-member --pubkey "$$BOOTSTRAP_AGENT_PUBKEY" --role member
+        fi
+        if [ -n "$${BOOTSTRAP_BARD_PUBKEY}" ]; then
+          echo "Adding Bard member: $$BOOTSTRAP_BARD_PUBKEY"
+          buzz-admin add-member --pubkey "$$BOOTSTRAP_BARD_PUBKEY" --role member
+        fi
+        if [ -n "$${BOOTSTRAP_XENA_PUBKEY}" ]; then
+          echo "Adding Xena member: $$BOOTSTRAP_XENA_PUBKEY"
+          buzz-admin add-member --pubkey "$$BOOTSTRAP_XENA_PUBKEY" --role member
         fi
         echo "Members after bootstrap:"
         buzz-admin list-members
