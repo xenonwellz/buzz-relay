@@ -122,6 +122,49 @@ services:
     networks:
       - buzz-net
 
+  # One-shot membership bootstrap (self-hosted Desktop often has no Invite UI).
+  # Safe to re-run: add-member is idempotent.
+  bootstrap-members:
+    image: ${BUZZ_IMAGE:-ghcr.io/block/buzz:main}
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-buzz}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-buzz}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379
+      BUZZ_RELAY_PRIVATE_KEY: ${BUZZ_RELAY_PRIVATE_KEY:?set BUZZ_RELAY_PRIVATE_KEY}
+      RELAY_URL: ${RELAY_URL:?set RELAY_URL}
+      BOOTSTRAP_OWNER_PUBKEY: ${RELAY_OWNER_PUBKEY:?set RELAY_OWNER_PUBKEY}
+      BOOTSTRAP_AGENT_PUBKEY: ${BOOTSTRAP_AGENT_PUBKEY:-}
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - |
+        set -euo pipefail
+        if ! command -v buzz-admin >/dev/null 2>&1; then
+          echo "buzz-admin not found in image; trying /usr/local/bin"
+          ls -la /usr/local/bin || true
+          exit 1
+        fi
+        echo "Listing members before bootstrap..."
+        buzz-admin list-members || true
+        echo "Ensuring owner pubkey is admin: $$BOOTSTRAP_OWNER_PUBKEY"
+        buzz-admin add-member --pubkey "$$BOOTSTRAP_OWNER_PUBKEY" --role admin
+        if [ -n "$${BOOTSTRAP_AGENT_PUBKEY}" ]; then
+          echo "Adding agent member: $$BOOTSTRAP_AGENT_PUBKEY"
+          buzz-admin add-member --pubkey "$$BOOTSTRAP_AGENT_PUBKEY" --role member
+        fi
+        echo "Members after bootstrap:"
+        buzz-admin list-members
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      relay:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - buzz-net
+
 volumes:
   buzz-postgres-data:
   buzz-redis-data:
